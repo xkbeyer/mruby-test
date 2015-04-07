@@ -1,0 +1,28 @@
+# Ignore some of the VC++ user-files
+.editorconfig
+*.vcxproj.user
+*.sdf
+*.suo
+*.ilk
+*.pdb
+*.exe
+*.lib
+*.docstates
+*.log
+*.ex*
+*.opensdf
+
+# Ignore the VC++ build folders
+Debug/
+Release/
+ipch/
+x64/
+win32/
+
+# And some system's temp files
+*~
+*.tmp
+*.bak
+
+# Other artifacts not to track
+msg.txt
