@@ -86,15 +86,15 @@ int _tmain(int argc, _TCHAR* argv[])
     mrb_define_method( mrb, krn, "host_ver", mrb_host_ver, MRB_ARGS_REQ( 0 ) );
 
     // Run the defined function in a string script.
-    mrb_load_string(mrb, "t_printstr 'Test coming from mruby\n'");
+    mrb_load_string( mrb, "t_printstr 'Test coming from mruby\n'" );
     mrb_load_string( mrb, "p 'Test pure mruby print statement'" );
     mrb_load_string( mrb, "p host_ver" );
 
     // Read and executes the file.
     FILE* f = fopen( "./test.rb", "r" );
-    mrb_value ret = mrb_load_file( mrb, f);
+    mrb_value ret = mrb_load_file( mrb, f );
     fclose( f );
-    check_retcode( mrb);
+    check_retcode( mrb );
 
     // Call host_ver the call back to the C++ app, which resides on top level.
     ret = mrb_funcall( mrb, mrb_top_self( mrb ), "host_ver", 0 );
@@ -105,25 +105,33 @@ int _tmain(int argc, _TCHAR* argv[])
 
     // Call foo(), which resides on top level.
     ret = mrb_funcall( mrb, mrb_top_self(mrb), "foo", 0 );
-    check_retcode( mrb);
+    check_retcode( mrb );
 
     // Call bar('Hallo'), which resides on top level.
     mrb_value strarg = mrb_str_new( mrb, "Hallo", sizeof( "Hallo" ) );
     ret = mrb_funcall( mrb, mrb_top_self( mrb ), "bar", 1, strarg );
-    check_retcode( mrb);
+    check_retcode( mrb );
 
     // Call bar(25), which resides on top level.
     mrb_value intarg = mrb_fixnum_value( 25 );
     ret = mrb_funcall( mrb, mrb_top_self( mrb ), "bar", 1, intarg );
-    check_retcode( mrb);
+    check_retcode( mrb );
 
     // Call class method
+    // Klasse.bar
     struct RClass* klasse = mrb_class_get( mrb, "Klasse" );
     mrb_value kls = mrb_obj_value( klasse );
     ret = mrb_funcall( mrb, kls, "bar", 0 );
     check_retcode( mrb );
 
-
+    /* The Following code mimics the ruby code:
+     * k = Klasse.new
+     * k.get_desc
+     * k.print
+     * k.member_var
+     * k.member_var = 110
+     * k.member_var
+     */
     // Instantiate class Klasse and call some of the methods.
     mrb_value kls_inst = mrb_class_new_instance( mrb, 0, nullptr, klasse );
     // Call method get_desc().
@@ -135,6 +143,30 @@ int _tmain(int argc, _TCHAR* argv[])
     // Call method print, which calls the C++ function mrb_t_printstr
     ret = mrb_funcall( mrb, kls_inst, "print", 0 );
     check_retcode( mrb );
+
+    // Call default getter for the class variable member_var method.
+    ret = mrb_funcall( mrb, kls_inst, "member_var", 0 );
+    if( check_retcode( mrb ) ) {
+       // Should display the member_var to be 123
+       eval_retcode( mrb, ret );
+    }
+
+    // Call default setter for the class variable member_var method.
+    mrb_value int_val = mrb_fixnum_value( 110 );
+    ret = mrb_funcall( mrb, kls_inst, "member_var=", 1, int_val );
+    check_retcode( mrb );
+
+    // Call default getter for the class variable member_var method. To verify the new value of 110.
+    ret = mrb_funcall( mrb, kls_inst, "member_var", 0 );
+    if( check_retcode( mrb ) ) {
+       // Should display the member_var to be 110
+       if ( mrb_fixnum_p(ret) && mrb_fixnum(ret) == 110 ) {
+         // Everything as expected.
+          std::cout << "Got member_var = " << mrb_fixnum( ret ) << " OK!" << std::endl;
+       } else {
+          std::cout << "member_var should be 110 but is " << mrb_fixnum( ret ) << std::endl;
+       }
+    }
 
     mrb_close( mrb );
     
