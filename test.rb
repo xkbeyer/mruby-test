@@ -8,6 +8,10 @@ def bar( arg )
   p "called bar(#{arg})."
 end
 
+def fun( zahl, text, fixzahl )
+  p "fun(#{zahl}, #{text}, #{fixzahl}"
+end
+
 class Klasse
   attr_accessor :member_var
   
