@@ -6,15 +6,18 @@
 //
 
 #include "stdafx.h"
-#include <time.h>
+#include <ctime>
 #include <iostream>
 #include <sstream>
 #include <vector>
+#include <chrono>
+
 #include <mruby.h>
 #include <mruby/compile.h>
 #include <mruby/string.h>
 #include <mruby/class.h>
 #include "function.h"
+
 
 // Checks the return state, if it has an ruby exception print the information.
 bool check_retcode( mrb_state* mrb)
@@ -32,17 +35,11 @@ bool check_retcode( mrb_state* mrb)
 // Prints the object or if an exception is present its information.
 void eval_retcode( mrb_state* mrb, mrb_value rc )
 {
-    if( mrb->exc ) {
-        // Exception
-        mrb_value obj = mrb_funcall( mrb, mrb_obj_value( mrb->exc ), "inspect", 0 );
-        std::string obj_str( RSTRING_PTR( obj ), RSTRING_LEN( obj ) );
-        std::cout << "exception: " << obj_str << std::endl;
-    } else {
+    if( check_retcode(mrb) ) {
         mrb_value obj = mrb_funcall( mrb, rc, "inspect", 0 );
         std::string obj_str( RSTRING_PTR( obj ), RSTRING_LEN( obj ) );
         std::cout << "eval: " << obj_str << std::endl;
     }
-
 }
 
 // A simple prints string.
@@ -63,12 +60,65 @@ mrb_value mrb_t_printstr( mrb_state* mrb, mrb_value self )
 mrb_value mrb_host_ver( mrb_state* mrb, mrb_value self )
 {
     std::stringstream ver;
-    time_t rawtime;
 
-    time( &rawtime );
-    ver << "Host Application 0.0.1 build on " << ctime( &rawtime ) << " w/ MSC ver " << _MSC_FULL_VER << " Platform x64\n";
+    auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    ver << "Host Application 0.0.1 build on " << std::ctime(&now) << " w/ MSC ver " << _MSC_FULL_VER << " Platform x64\n";
     mrb_value obj = mrb_str_new( mrb, ver.str().c_str(), ver.str().size() );
     return obj;
+}
+
+double c_loadcpu( double num1, double num2 )
+{
+   auto res = 0.0;
+   for( long long i = 0; i < 1000000; ++i ) {
+      res += num1 / num2 * (double) i;
+   }
+   return res;
+}
+
+mrb_value c_mul_add_add(mrb_state* mrb, mrb_value self )
+{
+   mrb_value obj[4];
+   mrb_value retval;
+
+#if 1
+   // Here the arguments are converted as given by format string. Therefor the mrb_value type information is not set.
+   auto count = mrb_get_args(mrb, "fffi", &obj[0], &obj[1], &obj[2], &obj[3] );
+   if(count == 4) {
+#else
+   // The the arguments are returned as the object they are and the type information is set.
+   auto count = mrb_get_args(mrb, "oooo", &obj[0], &obj[1], &obj[2], &obj[3]);
+   if(count == 4 && mrb_float_p(obj[0]) && mrb_float_p(obj[1]) && mrb_float_p(obj[2]) && mrb_fixnum_p(obj[3])) {
+#endif
+      double accu, num1, num2;
+      int i;
+      accu = mrb_float(obj[0]);
+      num1 = mrb_float(obj[1]);
+      num2 = mrb_float(obj[2]);
+      i = mrb_fixnum(obj[3]);
+      accu += num1 * num2 + (double)i;
+      retval = mrb_float_value(mrb, accu);
+   }
+   return retval;
+}
+
+mrb_value c_mul_add_add_loop(mrb_state* mrb, mrb_value self)
+{
+   mrb_value obj[3];
+   mrb_value retval = mrb_float_value(mrb, 0.0);
+
+   auto count = mrb_get_args(mrb, "iff", &obj[0], &obj[1], &obj[2]);
+   if(count == 3) {
+      double accu = 0.0;
+      long i = mrb_fixnum(obj[0]);
+      double num1 = mrb_float(obj[1]);
+      double num2 = mrb_float(obj[2]);
+      for(long l = 0; l < i; ++l) {
+         accu += num1 * num2 + (double) l;
+      }
+      retval = mrb_float_value(mrb, accu);
+   }
+   return retval;
 }
 
 
@@ -84,8 +134,10 @@ int _tmain(int argc, _TCHAR* argv[])
 
     // Create a function which is globally accessible
     struct RClass *krn = mrb->kernel_module;
-    mrb_define_method( mrb, krn, "t_printstr", mrb_t_printstr, MRB_ARGS_REQ( 1 ) );
-    mrb_define_method( mrb, krn, "host_ver", mrb_host_ver, MRB_ARGS_REQ( 0 ) );
+    mrb_define_method(mrb, krn, "t_printstr", mrb_t_printstr, MRB_ARGS_REQ( 1 ) );
+    mrb_define_method(mrb, krn, "host_ver", mrb_host_ver, MRB_ARGS_REQ( 0 ) );
+    mrb_define_method(mrb, krn, "c_mul_add_add", c_mul_add_add, MRB_ARGS_REQ(4));
+    mrb_define_method(mrb, krn, "c_mul_add_add_loop", c_mul_add_add_loop, MRB_ARGS_REQ(3));
 
     // Run the defined function in a string script.
     mrb_value ret = mrb_load_string( mrb, "t_printstr 'Test coming from mruby\n'" );
@@ -175,6 +227,41 @@ int _tmain(int argc, _TCHAR* argv[])
           std::cout << "member_var should be 110 but is " << mrb_fixnum( ret ) << std::endl;
        }
     }
+
+    auto startTime = std::chrono::high_resolution_clock::now();
+    auto result = c_loadcpu( 1.23, 100 );
+    auto endTime = std::chrono::high_resolution_clock::now();
+    auto timeDiffC = endTime - startTime;
+    std::cout << "C result = " << result << std::endl;
+    startTime = std::chrono::steady_clock::now();
+    ret = make_call(mrb, mrb_top_self(mrb), "loadcpu", 1.23, 100. );
+    endTime = std::chrono::steady_clock::now();
+    auto timeDiffR = endTime - startTime;
+    eval_retcode(mrb, ret);
+    auto totalTimeC = std::chrono::duration_cast<std::chrono::milliseconds>(timeDiffC).count();
+    auto totalTimeR = std::chrono::duration_cast<std::chrono::milliseconds>(timeDiffR).count();
+    auto CInstr = (double)totalTimeC / 1000000.;
+    auto RInstr = (double) totalTimeR / 1000000.;
+    std::cout << "C time " << totalTimeC << " , " << CInstr << " R time " << totalTimeR << " , " << RInstr << std::endl;
+
+    startTime = std::chrono::steady_clock::now();
+    ret = make_call(mrb, mrb_top_self(mrb), "loadcpu2", 1.23, 100.);
+    endTime = std::chrono::steady_clock::now();
+    eval_retcode(mrb, ret);
+    timeDiffR = endTime - startTime;
+    totalTimeR = std::chrono::duration_cast<std::chrono::milliseconds>(timeDiffR).count();
+    RInstr = (double) totalTimeR / 1000000.;
+    std::cout << "C callback time " << totalTimeR << " , " << RInstr << std::endl;
+
+    startTime = std::chrono::steady_clock::now();
+    ret = make_call(mrb, mrb_top_self(mrb), "loadcpu3", 1.23, 100.);
+    endTime = std::chrono::steady_clock::now();
+    timeDiffR = endTime - startTime;
+    eval_retcode(mrb, ret);
+    totalTimeR = std::chrono::duration_cast<std::chrono::milliseconds>(timeDiffR).count();
+    RInstr = (double) totalTimeR / 1000000.;
+    std::cout << "C callback2 time " << totalTimeR << " , " << RInstr << std::endl;
+    std::cout << "Times are in ms.\n";
 
     mrb_close( mrb );
     

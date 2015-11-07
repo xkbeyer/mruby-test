@@ -30,6 +30,31 @@ class Klasse
   end
 end
 
-p 'In test.rb'
+# How much time takes the floating point arithmetic in the interpreter?
+def loadcpu( num1, num2 )
+  res = 0.0
+  (1..1000000).each do |i|
+    res += num1 / num2 * i
+  end
+  res
+end  
 
+# This w/ a call back to C++ is even slower than the pure ruby one.
+def loadcpu2( num1, num2 )
+  res = 0.0
+  (1..1000000).each do |i|
+    res = c_mul_add_add(res, num1, num2,i)
+  end
+  res
+end  
+
+# This is the easy one, just put everything into the C++ call back.
+def loadcpu3( num1, num2 )
+  c_mul_add_add_loop(1000000, num1, num2)
+end  
+
+
+p 'In test.rb'
+#x = loadcpu 1.5, 23
+#puts x
 p 'end test.rb'
