@@ -17,7 +17,7 @@
 #include <mruby/string.h>
 #include <mruby/class.h>
 #include "function.h"
-
+#include "time_meas.h"
 
 // Checks the return state, if it has an ruby exception print the information.
 bool check_retcode( mrb_state* mrb)
@@ -228,37 +228,38 @@ int _tmain(int argc, _TCHAR* argv[])
        }
     }
 
-    auto startTime = std::chrono::high_resolution_clock::now();
+    TimeMeasurement tmC;
     auto result = c_loadcpu( 1.23, 100 );
-    auto endTime = std::chrono::high_resolution_clock::now();
-    auto timeDiffC = endTime - startTime;
-    std::cout << "C result = " << result << std::endl;
-    startTime = std::chrono::steady_clock::now();
+    auto res2 = result; // Do this in order not to be reordered in release mode. Otherwise the measurement is 0.
+    tmC.stop();
+    std::cout << "C result = " << result << " " << res2 << std::endl; // See above for res2
+    TimeMeasurement tmR;
     ret = make_call(mrb, mrb_top_self(mrb), "loadcpu", 1.23, 100. );
-    endTime = std::chrono::steady_clock::now();
-    auto timeDiffR = endTime - startTime;
+    tmR.stop();
     eval_retcode(mrb, ret);
-    auto totalTimeC = std::chrono::duration_cast<std::chrono::milliseconds>(timeDiffC).count();
-    auto totalTimeR = std::chrono::duration_cast<std::chrono::milliseconds>(timeDiffR).count();
-    auto CInstr = (double)totalTimeC / 1000000.;
-    auto RInstr = (double) totalTimeR / 1000000.;
-    std::cout << "C time " << totalTimeC << " , " << CInstr << " R time " << totalTimeR << " , " << RInstr << std::endl;
 
-    startTime = std::chrono::steady_clock::now();
+    TimeMeasurement  tmR2;
     ret = make_call(mrb, mrb_top_self(mrb), "loadcpu2", 1.23, 100.);
-    endTime = std::chrono::steady_clock::now();
+    tmR2.stop();
     eval_retcode(mrb, ret);
-    timeDiffR = endTime - startTime;
-    totalTimeR = std::chrono::duration_cast<std::chrono::milliseconds>(timeDiffR).count();
+
+    TimeMeasurement tmR3;
+    ret = make_call(mrb, mrb_top_self(mrb), "loadcpu3", 1.23, 100.);
+    tmR3.stop();
+    eval_retcode(mrb, ret);
+
+    auto totalTimeC = tmC.diffTime<std::chrono::milliseconds>();
+    auto totalTimeR = tmR.diffTime<std::chrono::milliseconds>();
+    auto CInstr = (double) totalTimeC / 1000000.;
+    auto RInstr = (double) totalTimeR / 1000000.;
+    std::cout << "C time " << totalTimeC << " , " << CInstr << std::endl;
+    std::cout << "R time " << totalTimeR << " , " << RInstr << std::endl;
+
+    totalTimeR = tmR2.diffTime<std::chrono::milliseconds>();
     RInstr = (double) totalTimeR / 1000000.;
     std::cout << "C callback time " << totalTimeR << " , " << RInstr << std::endl;
 
-    startTime = std::chrono::steady_clock::now();
-    ret = make_call(mrb, mrb_top_self(mrb), "loadcpu3", 1.23, 100.);
-    endTime = std::chrono::steady_clock::now();
-    timeDiffR = endTime - startTime;
-    eval_retcode(mrb, ret);
-    totalTimeR = std::chrono::duration_cast<std::chrono::milliseconds>(timeDiffR).count();
+    totalTimeR = tmR3.diffTime<std::chrono::milliseconds>();
     RInstr = (double) totalTimeR / 1000000.;
     std::cout << "C callback2 time " << totalTimeR << " , " << RInstr << std::endl;
     std::cout << "Times are in ms.\n";
