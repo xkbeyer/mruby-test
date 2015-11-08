@@ -96,7 +96,7 @@ mrb_value c_mul_add_add(mrb_state* mrb, mrb_value self )
       num1 = mrb_float(obj[1]);
       num2 = mrb_float(obj[2]);
       i = mrb_fixnum(obj[3]);
-      accu += num1 * num2 + (double)i;
+      accu += num1 / num2 * (double)i;
       retval = mrb_float_value(mrb, accu);
    }
    return retval;
@@ -114,7 +114,7 @@ mrb_value c_mul_add_add_loop(mrb_state* mrb, mrb_value self)
       double num1 = mrb_float(obj[1]);
       double num2 = mrb_float(obj[2]);
       for(long l = 0; l < i; ++l) {
-         accu += num1 * num2 + (double) l;
+         accu += num1 / num2 * (double) l;
       }
       retval = mrb_float_value(mrb, accu);
    }
