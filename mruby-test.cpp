@@ -16,8 +16,10 @@
 #include <mruby/compile.h>
 #include <mruby/string.h>
 #include <mruby/class.h>
-#include "function.h"
+#include "binding.h"
 #include "time_meas.h"
+
+using namespace mruby;
 
 // Checks the return state, if it has an ruby exception print the information.
 bool check_retcode( mrb_state* mrb)
@@ -125,12 +127,14 @@ mrb_value c_mul_add_add_loop(mrb_state* mrb, mrb_value self)
 int _tmain(int argc, _TCHAR* argv[])
 {
 
-    mrb_state* mrb;
-    mrb = mrb_open();
+    mrb_state* mrb = mrb_open();
     if ( mrb == nullptr )
     {
         std::cout << "Embedded ruby interpretor init failed\n";
     }
+   
+    auto ret1 = testBinding(mrb);
+    eval_retcode(mrb, ret1);
 
     // Create a function which is globally accessible
     struct RClass *krn = mrb->kernel_module;
@@ -138,7 +142,7 @@ int _tmain(int argc, _TCHAR* argv[])
     mrb_define_method(mrb, krn, "host_ver", mrb_host_ver, MRB_ARGS_REQ( 0 ) );
     mrb_define_method(mrb, krn, "c_mul_add_add", c_mul_add_add, MRB_ARGS_REQ(4));
     mrb_define_method(mrb, krn, "c_mul_add_add_loop", c_mul_add_add_loop, MRB_ARGS_REQ(3));
-
+   
     // Run the defined function in a string script.
     mrb_value ret = mrb_load_string( mrb, "t_printstr 'Test coming from mruby\n'" );
     eval_retcode( mrb, ret );
@@ -263,6 +267,7 @@ int _tmain(int argc, _TCHAR* argv[])
     RInstr = (double) totalTimeR / 1000000.;
     std::cout << "C callback2 time " << totalTimeR << " , " << RInstr << std::endl;
     std::cout << "Times are in ms.\n";
+
 
     mrb_close( mrb );
     
