@@ -11,6 +11,7 @@
 *.log
 *.ex*
 *.opensdf
+*.VC.*
 
 # Ignore the VC++ build folders
 Debug/
@@ -26,3 +27,4 @@ win32/
 
 # Other artifacts not to track
 msg.txt
+*.org
