@@ -8,9 +8,7 @@
 // tm.stop();
 // std::cout << "Time elapsed so far (ms) " << tm.diffTime<std::chrono::milliseconds>() << std::endl;
 //
-
-#ifndef TIME_MEAS_H
-#define TIME_MEAS_H
+#pragma once
 
 #include <chrono>
 
@@ -36,5 +34,3 @@ private:
    std::chrono::time_point< std::chrono::high_resolution_clock> startTime;
    std::chrono::time_point< std::chrono::high_resolution_clock> endTime;
 };
-
-#endif
