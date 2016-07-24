@@ -32,7 +32,7 @@ struct func_bind
       auto pMethod = *(MethodType*) mrb_ptr(method);
       auto rc = (c->*pMethod)();
 
-      mrb_value v = mrb_fixnum_value(rc);
+      mrb_value v = mval(mrb, rc);
       return v;
    }
 
