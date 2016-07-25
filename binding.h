@@ -6,6 +6,7 @@
 #pragma once
 
 #include <string>
+#include <utility>
 
 #include <mruby.h>
 #include <mruby/compile.h>
@@ -63,12 +64,12 @@ struct bindclass
    };
 };
 
-template<class T, typename FunctionType, typename ArgType, int ARGS>
+template<class T, typename FunctionType, typename ReturnType>
 struct bind
 {
    static void method(mrb_state* mrb, struct RClass * self, std::string fname, FunctionType f)
    {
-      mrb_func_t fn = &func_bind<T, FunctionType, int>::func;
+      mrb_func_t fn = &func_bind < T, FunctionType, ReturnType>::func;
       mrb_sym symb = mrb_intern_cstr(mrb, fname.c_str());
       mrb_value cfunc;
       cfunc.value.p = &f;

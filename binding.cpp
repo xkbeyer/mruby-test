@@ -19,14 +19,14 @@ public:
    void setNumber(int n) { aNumber = n; }
    int  getNumber() const { return aNumber; }
 private:
-   int aNumber = 0;
+   int aNumber = 1234;
 };
 
 mrb_value testBinding(mrb_state * mrb)
 {
    // Export a C++ class
    auto rubyclass = mruby::bindclass<ACppClass>::it(mrb, "ACppClass");
-   mruby::bind<ACppClass, decltype(&ACppClass::getNumber), void, 0>::method(mrb, rubyclass, "get", &ACppClass::getNumber);
+   mruby::bind<ACppClass, decltype(&ACppClass::getNumber), int>::method(mrb, rubyclass, "get", &ACppClass::getNumber);
    auto ret1 = mrb_load_string(mrb, "app = ACppClass.new\n p app.get()");
    return ret1;
 }
