@@ -19,6 +19,7 @@ Release/
 ipch/
 x64/
 win32/
+build
 
 # And some system's temp files
 *~
